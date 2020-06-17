@@ -1,0 +1,15 @@
+---
+# Loads all servers into the playbook so their hosts file can be updated later
+- hosts: all
+  tasks: []
+  roles:
+    - updatehosts
+
+- name: Install spark nodes
+  hosts: SparkSlaves
+  become: no
+
+  roles:
+    - common
+    - sparkbase
+    - sparkslave

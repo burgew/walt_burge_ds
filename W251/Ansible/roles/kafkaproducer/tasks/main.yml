@@ -1,0 +1,69 @@
+- name: Install pip python requirements
+  pip:
+    name: pip
+    executable: pip3.6
+    state: latest
+
+- name: Install python requirements
+  pip:
+    name: "{{ item }}"
+    executable: pip3.6
+    state: present
+  with_items:
+    - pip
+    - certifi
+    - chardet
+    - future
+    - idna
+    - oauthlib
+    - py4j
+    - pycorenlp
+    - PySocks
+    - pypandoc
+    - python-dateutil
+    - requests
+    - requests-oauthlib
+    - setuptools
+    - six
+    - urllib3
+    - pyspark
+    - python-twitter
+    - cassandra-driver
+    - tweepy
+    - kafka-python
+
+- name: Creates w251 log directory
+  file: path=/var/log/w251/ state=directory group=root owner=root
+
+- name: Add iptables
+  yum:
+    pkg={{item}} state=installed
+  with_items:
+    - iptables
+    - iptables-services
+
+- name: Iptables block incoming traffic on public device
+  iptables:
+    chain: INPUT
+    action: insert
+    in_interface: eth1
+    ctstate: NEW
+    jump: DROP
+
+- name: Enable iptables
+  service: 
+    name: iptables 
+    state: started
+    enabled: yes
+
+- name: Copy the twitter producer script to the server
+  copy:
+    src: /root/MIDS_W251_Benchmarking/streaming/twitter_connect_integrated.py
+    dest: /opt/twitter_connect_integrated.py
+    mode: 0711
+
+- name: Execute producer script
+  shell: nohup /opt/twitter_connect_integrated.py 1>/dev/null 2>/var/log/w251/twitter_connect_integrated.log &
+  args:
+    chdir: /opt/
+  

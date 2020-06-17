@@ -1,0 +1,326 @@
+---
+title: "W241_Project_PGSS_Campaign"
+author: "Subha Vadakkumkoor, Walter Burge"
+date: "August 3, 2018"
+output: pdf_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=TRUE}
+library(data.table)
+library(stargazer)
+library(dplyr)
+library(readr)
+```
+
+## Loading data
+
+Data imported from Salsa, excluding PII fields (name and email address) are read into R dataframes. All dataframes have the same structure and format. With each step of the treatment (Orignal email, Reminder1 and Reminder2), there are 2 files: list of people that were assigned the treatment (recieved the email) and list of people that responded to the treatment (donated money).
+
+
+```{r}
+
+#Load data
+
+#Original email
+orig_email_rec<-read.csv('./data/BlastReport_Class Experiment Final Email_Recipients.csv')
+setnames(orig_email_rec, old=c("Opened"), new=c("opened_orig_email"))
+
+orig_email_resp<-read.csv('./data/BlastReport_Class Experiment Final Email_Conversions.csv')
+sapply(orig_email_resp, class)
+#Create an indicator and rename columns to reflect original email response (useful for merge later)
+orig_email_resp$donated_after_orig_email=1
+names(orig_email_resp)
+setnames(orig_email_resp, old=c("Conversion.Date","Amount"), new=c("Orig_email_conversion_date", "orig_email_amount"))
+
+#Reminder1
+reminder1_rec<-read.csv('./data/BlastReport_Class experiment Reminder1_Recipients.csv')
+setnames(reminder1_rec, old=c("Opened"), new=c("opened_reminder1"))
+reminder1_rec_subset=reminder1_rec[,c("opened_reminder1","Supporter.ID")]
+
+reminder1_resp<-read.csv('./data/BlastReport_Class experiment Reminder1_Conversions.csv')
+reminder1_resp$donated_after_reminder1=1
+setnames(reminder1_resp, old=c("Conversion.Date","Amount"), new=c("reminder1_conversion_date", "reminder1_amount"))
+
+#Reminder2
+reminder2_rec<-read.csv('./data/BlastReport_Class Experiment Reminder 2_Recipients.csv')
+setnames(reminder2_rec, old=c("Opened"), new=c("opened_reminder2"))
+reminder2_rec_subset=reminder2_rec[,c("opened_reminder2","Supporter.ID")]
+
+
+reminder2_resp<-read.csv('./data/BlastReport_Class Experiment Reminder 2_Conversions.csv')
+reminder2_resp$donated_after_reminder2=1
+setnames(reminder2_resp, old=c("Conversion.Date","Amount"), new=c("reminder2_conversion_date", "reminder2_amount"))
+
+#Load donor profile file
+alumni_profile<-read.csv('./data/Alumni_profile_all.csv',colClasses = c("character","character","numeric","character","character","character","character","character","character","character","character","numeric","numeric","numeric","numeric","numeric","numeric","numeric"), na.strings=c('','  ','   '))
+sapply(alumni_profile,class)
+#names(alumni_profile)
+
+#Examine the layout of a representative file
+cat("Fields in recipients file\n")
+#names(orig_email_rec)
+
+cat("\nFields in responder files\n")
+#names(orig_email_resp)
+
+#Get dimensions of each file
+cat("\nDimensions of each file\n")
+dfList <- list(orig_email_rec,orig_email_resp,reminder1_rec,reminder1_resp,reminder2_rec,reminder2_resp)
+lapply(dfList,dim)
+
+```
+Now we merge the orignal rec and resp datasets with the responders from reminder1 and reminder2 and alumni profile. 
+
+```{r}
+#Merge original recipients email with Alumni profile
+merged<-merge(orig_email_rec,alumni_profile,by.x="Supporter.ID",by.y="Constituent.UUID",all.x=TRUE)
+
+#Merge with the original email response
+merged<-merge(merged,orig_email_resp[,c("Supporter.ID","Orig_email_conversion_date","orig_email_amount","donated_after_orig_email")],by="Supporter.ID",all.x=TRUE)
+
+cat("\nNum of rows",nrow(merged))
+
+#Merge with the first reminder response
+merged<-merge(merged,reminder1_rec_subset,by="Supporter.ID",all.x=TRUE)
+
+merged<-merge(merged,reminder1_resp[,c("Supporter.ID","reminder1_conversion_date","reminder1_amount","donated_after_reminder1")],by="Supporter.ID",all.x=TRUE)
+
+cat("\nNum of rows",nrow(merged))
+
+#Merge with the second reminder response
+merged<-merge(merged,reminder2_rec_subset,by="Supporter.ID",all.x=TRUE)
+
+merged<-merge(merged,reminder2_resp[,c("Supporter.ID","reminder2_conversion_date","reminder2_amount","donated_after_reminder2")],by="Supporter.ID",all.x=TRUE)
+
+cat("\nNum of rows",nrow(merged))
+
+#Set NA's in indicators to 0
+merged[(is.na(merged$donated_after_orig_email)),]$donated_after_orig_email=0
+merged[(is.na(merged$donated_after_reminder1)),]$donated_after_reminder1=0
+merged[(is.na(merged$donated_after_reminder2)),]$donated_after_reminder2=0
+
+#Adding indicator for donated this year before treatment
+merged$donated_TY_pre_treatment <- as.Date("1900-01-01")
+merged[!is.na(merged$Last.Gift.Date),]$donated_TY_pre_treatment <- as.Date(merged[!is.na(merged$Last.Gift.Date),]$Last.Gift.Date,"%m/%d/%Y")
+#Changed this to exclude donations after the original email was sent, assuming this is for 2a. So now no one has donated before the original email in this calendar year
+merged$donated_TY_pre_treatment <- ifelse(merged$donated_TY_pre_treatment>as.Date("2017-12-31") & merged$donated_TY_pre_treatment<as.Date("2017-07-25") ,1,0)
+print("Number of donations this year pre-treatment: ")
+print(sum(merged$donated_TY_pre_treatment))
+```
+
+Let us create dependant and covariates
+
+```{r}
+#Check for MULTIPLE DONATIONS
+
+#Define treatment indicator
+merged$treat<-ifelse(merged$Split.Name %in% c("Split A"),1,0)
+table(merged$Split.Name,merged$treat)
+
+#Total donation amount
+merged$orig_email_amount_copy=merged$orig_email_amount
+merged$reminder1_amount_copy=merged$reminder1_amount
+merged$reminder2_amount_copy=merged$reminder2_amount
+
+merged$orig_email_amount=ifelse(is.na(merged$orig_email_amount_copy),0,merged$orig_email_amount)
+merged$reminder1_amount=ifelse(is.na(merged$reminder1_amount_copy),0,merged$reminder1_amount_copy)
+merged$reminder2_amount=ifelse(is.na(merged$reminder2_amount_copy),0,merged$reminder2_amount_copy)
+
+merged$total_donation_amount=merged$orig_email_amount+merged$reminder1_amount+merged$reminder2_amount
+summary(merged$total_donation_amount)
+summary(merged$orig_email_amount)
+summary(merged$reminder1_amount)
+summary(merged$reminder2_amount)
+
+#Days till donation
+merged$donation_date=coalesce(as.Date(merged$Orig_email_conversion_date),as.Date(merged$reminder1_conversion_date),as.Date(merged$reminder2_conversion_date))
+#merged[(is.na(merged$donation_date)),]$donation_date=as.Date('2018-7-24')
+merged$days_till_donation=merged$donation_date-as.Date(merged$Time.Sent)
+#merged[(merged$donation_date>0),]
+table(merged$days_till_donation)
+
+#Donation response indicator
+merged$donated_any_time=0
+merged[!is.na(merged$days_till_donation),]$donated_any_time=1
+
+#OPened any reminder
+merged$opened_atleast_one_reminder=merged$opened_reminder1 * merged$opened_reminder2
+merged$opened_any_email=merged$opened_orig_email * merged$opened_atleast_one_reminder
+
+#PGSS year based
+merged$Ben_involved_ind=ifelse(merged$PGSS.Year>=1997,1,0)
+merged$Ben_involved_ind[merged$PGSS.Year==1998]=0
+#table(merged$Ben_involved_ind,merged$PGSS.Year)
+
+#Batch age indicator
+merged$PGSS_age=merged$PGSS.Year-1982
+
+#Older batch indicator
+merged$PGSS_age_bucket=merged$PGSS_age%/%5
+merged$PGSS_age_bucket[merged$PGSS.Year>=2007]=6
+#table(merged$PGSS.Year,merged$PGSS_age_bucket)
+
+
+#Interaction of split and Ben involvement
+merged$treat_Ben_inter=merged$treat * merged$Ben_involved_ind 
+merged$treat_reminder=merged$treat * merged$opened_reminder1 * merged$opened_reminder2
+
+#What else do we need interaction or difference in difference for
+```
+
+
+```{r}
+
+#Define non-compliance. What about people who opened but did not click or contribute?
+
+#Check for emails that were read within the experiment time period: DO we need to stop looking for donations after 8/1? If they opened the final reminder prior to end of the treatment, isn't that enough? This actually depends on the definition of the treatment.
+merged1<-merged[(merged$opened_reminder2>as.Date("2017-08-02") ),]
+nrow(merged1)
+
+#Method1: Exclude anyone who did not open original email (message is the treatment)
+merged$compliant_orig=0
+merged[merged$opened_orig_email,]$compliant_orig=1
+compliant_orig<-merged[merged$compliant_orig==1,]
+
+#Method2: Subject line is the treatment so everyone is treated
+merged$compliant_all=1
+
+#Check number of people who typically do not open emails in previous campaigns
+
+```
+
+Stats
+
+```{r}
+
+cat("Response rate after original email")
+table(merged$donated_after_orig_email,merged$treat)
+
+cat("Response rate after reminder1")
+table(merged$donated_after_reminder1,merged$treat)
+
+cat("Response rate after reminder2")
+table(merged$donated_after_reminder2,merged$treat)
+
+table(merged$opened_orig_email,merged$donated_after_reminder1)
+
+table(merged$opened_orig_email,merged$donated_after_reminder2)
+
+```
+
+Checking for bad control: Does not seem like the reminders are bad control
+
+```{r}
+#table(merged$opened_orig_email,merged$opened_reminder1)
+
+#Regress reminder against original email
+
+reg_remember_treatment<-lm(opened_reminder1~merged$Split.Name,data=merged)
+print(summary(reg_remember_treatment))
+
+reg_remember_treatment<-lm(opened_reminder2~merged$Split.Name,data=merged)
+print(summary(reg_remember_treatment))
+
+reg_remember_treatment<-lm(opened_atleast_one_reminder~merged$Split.Name,data=merged)
+print(summary(reg_remember_treatment))
+
+```
+
+Regression for response
+
+```{r}
+#names(merged)
+```
+
+```{r}
+library(lmtest)
+library(sandwich)
+#Function to return robust errors
+printrobustSE <- function(regmodel)
+  { 
+  regmodel$vcovHC <- vcovHC(regmodel) 
+  summ <- coeftest(regmodel, regmodel$vcovHC)    
+  return(summ) 
+}
+```
+
+#Run
+
+```{r}
+merged$donated_any_time <- factor(merged$donated_any_time)
+
+
+#Method1: exclude everyone who did not open original email
+reg_response<-glm(donated_any_time~treat+opened_atleast_one_reminder+PGSS_age+last_gift_amount+treat_Ben_inter+SYBUNT_Indicator+LYBUNT_indicator+gift_count, data=compliant_orig,family="binomial")
+print(summary(reg_response))
+
+#Methods: all
+#THis is intent to treat
+reg_response<-glm(donated_any_time~treat+opened_atleast_one_reminder+PGSS_age+last_gift_amount+treat_Ben_inter+SYBUNT_Indicator+LYBUNT_indicator+gift_count, data=merged,family="binomial")
+print(printrobustSE(reg_response))
+
+
+```
+
+Regression on donation amount
+```{r}
+
+
+#Method1: exclude everyone who did not open original email
+reg_amt<-lm(total_donation_amount~treat+opened_atleast_one_reminder+PGSS_age+last_gift_amount+treat_Ben_inter+SYBUNT_Indicator+LYBUNT_indicator+gift_count, data=compliant_orig)
+print(summary(reg_amt))
+
+#Methods: all
+#THis is intent to treat
+reg_amt<-lm(total_donation_amount~treat+opened_atleast_one_reminder+PGSS_age+last_gift_amount+treat_Ben_inter+SYBUNT_Indicator+LYBUNT_indicator+gift_count, data=merged)
+print(summary(reg_amt))
+
+```
+
+Regression for effect of original resposne
+```{r}
+#Add other regressions here
+
+#Determining effect of two different splits on donation after original e-mail
+just_msg_effect_immediate<-lm(donated_after_orig_email~Split.Name, data=merged)
+print("Original treatment effect on immediate response:")
+print(summary(just_msg_effect_immediate))
+
+
+```
+
+Regression with HTE
+```
+#Regression for just the treatments and the last donation indicators
+reg_last_donate_cat <- lm(donated_after_orig_email~Split.Name+merged$donated_TY_pre_treatment+LYBUNT_indicator+
+                           SYBUNT_Indicator+Never_donator, data=merged)
+print("Regression of donations in response to first email against donation_TY_pre_treatment,LYBUNT, SYBUNT and Never_donator")
+print(summary(reg_last_donate_cat))
+
+#Regression for the treatments and the last donation indicators and treatments/indicators interactions
+reg_last_donate_int <- lm(donated_after_orig_email~Split.Name+donated_TY_pre_treatment+LYBUNT_indicator+
+                           SYBUNT_Indicator+Never_donator+
+                           Split.Name*donated_TY_pre_treatment+Split.Name*LYBUNT_indicator+Split.Name*SYBUNT_Indicator+
+                           Split.Name*Never_donator, data=merged)
+print("Regression of treatments and last donation indicators as well as interactions")
+print(summary(reg_last_donate_int))
+
+
+```
+
+Regression on donation delay
+```{r}
+reg_delay<-lm(days_till_donation~treat+treat_reminder+opened_reminder1+opened_reminder2+PGSS.Year+Months_since_last_donation+last_gift_amount, data=merged2)
+#print(summary(reg_delay))
+
+sum(merged$total_donation_amount)
+
+```
+
+Calculate ITT
+
+

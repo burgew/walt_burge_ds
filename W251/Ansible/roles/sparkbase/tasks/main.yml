@@ -1,0 +1,101 @@
+- name: Create w251 log directory
+  file: path=/var/log/w251 state=directory group=root owner=root
+
+- name: add authorized key
+  authorized_key:
+    user: root
+    state: present
+    key: http://softrepo/Spark/id_rsa.pub
+
+- name: add an ssh key
+  copy:
+    src: /software/Spark/id_rsa
+    dest: /root/.ssh/id_rsa
+    mode: 0600
+
+- name: Upgrade python pip
+  pip:
+    name: pip
+    executable: pip3.6
+    state: latest
+
+- name: Install python required packages
+  pip:
+    name: "{{ item }}"
+    executable: pip3.6
+    state: present
+  with_items:
+    - pip
+    - certifi
+    - chardet
+    - future
+    - idna
+    - oauthlib
+    - py4j
+    - pycorenlp
+    - PySocks
+    - pypandoc
+    - python-dateutil
+    - requests
+    - requests-oauthlib
+    - setuptools
+    - six
+    - urllib3
+    - pyspark
+    - python-twitter
+    - cassandra-driver
+    - tweepy
+    - kafka-python
+
+- name: Add Spark
+  unarchive:
+    src: http://softrepo/Spark/spark-2.3.1-bin-hadoop2.7.tgz
+    dest: /opt
+    creates: /opt/spark-2.3.1-bin-hadoop2.7
+    remote_src: yes
+
+- name: Symbolic link to Spark
+  file:
+    src: /opt/spark-2.3.1-bin-hadoop2.7
+    dest: /opt/spark
+    state: link
+
+- name: update spark spark-env file
+  copy:
+    src: spark-env.sh
+    dest: /opt/spark/conf/spark-env.sh
+
+- name: update spark log4j file
+  copy:
+    src: log4j.properties
+    dest: /opt/spark/conf/log4j.properties
+
+- name: Add spark streaming jar
+  unarchive:
+    src: http://softrepo/Spark/spark-streaming-kafka-0-8-assembly_2.11-2.3.1.jar.tgz
+    dest: /opt/spark/jars
+    creates: /opt/spark/jars/spark-streaming-kafka-0-8-assembly_2.11-2.3.1.jar
+    remote_src: yes
+
+- name: Add spark required packages
+  unarchive:
+    src: http://softrepo/Spark/spark_package_dependencies.tgz
+    dest: /
+    remote_src: yes
+
+- name: update spark defaults config file
+  copy:
+    src: spark-defaults.conf
+    dest: /opt/spark/conf/spark-defaults.conf
+
+- name: Install Stanford CoreNLP 
+  unarchive:
+    src: http://softrepo/Spark/stanford-corenlp-full-2018-02-27.zip
+    dest: /opt/
+    creates: /opt/stanford-corenlp-full-2018-02-27
+    remote_src: yes
+
+- name: Start Stanford CoreNLP
+  shell: nohup /usr/bin/java -mx5g -cp "*" edu.stanford.nlp.pipeline.StanfordCoreNLPServer -timeout 10000 </dev/null >/opt/stanford-corenlp-full-2018-02-27.log 2>&1 &
+  args:
+    chdir: /opt/stanford-corenlp-full-2018-02-27

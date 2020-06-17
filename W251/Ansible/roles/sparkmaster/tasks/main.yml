@@ -1,0 +1,25 @@
+- name: Pause before starting spark master
+  pause:
+    seconds: 10
+
+- name: start spark
+  shell: sbin/start-master.sh
+  args:
+    chdir: /opt/spark
+
+- name: Set up YaTsa spark script
+  copy:
+    src: yatsaRun.sh
+    dest: /opt/
+    mode: 0711
+
+- name: Copy the twitter producer script to the server
+  copy:
+    src: /root/MIDS_W251_Benchmarking/streaming/spark_integrated.py
+    dest: /root/spark_integrated.py
+    mode: 0711
+
+- name: Execute producer script
+  shell: nohup /opt/yatsaRun.sh 1>/var/log/w251/yatsaRun.log 2>&1 &
+  args:
+    chdir: /opt/

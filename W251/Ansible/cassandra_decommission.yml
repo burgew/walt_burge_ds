@@ -1,0 +1,8 @@
+---
+- name: Decommission Cassandra node
+  hosts: CassandraDecommission
+  become: no
+
+  tasks:
+  - name: Decommission cassandra node
+    command: /usr/bin/nodetool -h localhost decommission

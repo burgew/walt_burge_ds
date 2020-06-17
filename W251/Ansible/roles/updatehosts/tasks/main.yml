@@ -1,0 +1,85 @@
+- name: Update Hosts file for Cassandra Masters
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*[ \t]{{ item }}[ \t]|.*[ \t]{{ item }}$'
+    line: "{{ hostvars[item]['ansible_default_ipv4'].address }}    {{item}} {{item}}.w251.mids cassandra{{item | regex_replace('^cashost(.*)$', '\\1')}}"
+    state: present
+  with_items:
+    - "{{ groups['CassandraMasters'] }}"
+
+- name: Update Hosts File for zookeeper
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*[ \t]{{ item }}[ \t]|.*[ \t]{{ item }}$'
+    line: "{{ hostvars[item]['ansible_default_ipv4'].address }}    {{item}} {{item}}.w251.mids zookeepermaster"
+    state: present
+  with_items:
+    - "{{ groups['ZookeeperKafka'] }}"
+
+- name: Update Hosts File for Spark Master
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*[ \t]{{ item }}[ \t]|.*[ \t]{{ item }}$'
+    line: "{{ hostvars[item]['ansible_default_ipv4'].address }}    {{item}} {{item}}.w251.mids sparkmaster"
+    state: present
+  with_items:
+    - "{{ groups['SparkMaster'] }}"
+
+- name: Update Hosts File for others
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*[ \t]{{ item }}[ \t]|.*[ \t]{{ item }}$'
+    line: "{{ hostvars[item]['ansible_default_ipv4'].address }}    {{item}} {{item}}.w251.mids"
+    state: present
+  with_items:
+    - "{{ groups['CassandraSlaves'] }}"
+    - "{{ groups['KafkaBrokers'] }}"
+    - "{{ groups['SparkSlaves'] }}"
+    - "{{ groups['ThriftServer'] }}"
+
+- name: Update Hosts File services
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '.*[ \t]{{ item }}[ \t].*|.*[ \t]{{ item }}$'
+    line: "{{ hostvars[item]['ansible_eth0'].ipv4.address }}    {{item}} {{item}}.w251.mids"
+    state: present
+  with_items:
+    - "{{ groups['MandatoryHosts'] }}"
+
+- name: remove hostname mapped to loopback ipv4
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '^127\.0\.0\.1[ \t]*{{item}}.*'
+    state: absent
+  with_items:
+    - "{{ groups['CassandraMasters'] }}"
+    - "{{ groups['CassandraSlaves'] }}"
+    - "{{ groups['ZookeeperKafka'] }}"
+    - "{{ groups['KafkaBrokers'] }}"
+    - "{{ groups['SparkMaster'] }}"
+    - "{{ groups['SparkSlaves'] }}"
+    - "{{ groups['ThriftServer'] }}"
+
+- name: remove hostname mapped to loopback ipv6
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '^::1[ \t]*{{item}}.*'
+    state: absent
+  with_items:
+    - "{{ groups['CassandraMasters'] }}"
+    - "{{ groups['CassandraSlaves'] }}"
+    - "{{ groups['ZookeeperKafka'] }}"
+    - "{{ groups['KafkaBrokers'] }}"
+    - "{{ groups['SparkMaster'] }}"
+    - "{{ groups['SparkSlaves'] }}"
+    - "{{ groups['ThriftServer'] }}"
+
+- name: Remove hosts
+  lineinfile:
+    dest: /etc/hosts
+    regexp: "^.*[ \t]{{item}}[. \t]|^.*[ \t]{{item}}$"
+    state: absent
+  with_items:
+    - "{{ groups['RemovedNodes'] }}"
+    - "{{ groups['CassandraDecommission'] }}"
+    - "{{ groups['SparkDecommission'] }}"

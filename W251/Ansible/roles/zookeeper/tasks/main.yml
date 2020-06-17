@@ -1,0 +1,52 @@
+- name: Add Kafka
+  unarchive:
+    src: http://10.73.183.212/Kafka/kafka_2.11-0.8.2.2.tgz
+    dest: /opt
+    creates: /opt/kafka_2.11-0.8.2.2
+    remote_src: yes
+
+- name: Symbolic link to Kafka
+  file:
+    src: /opt/kafka_2.11-0.8.2.2
+    dest: /opt/kafka
+    state: link
+
+- name: Set permissions to Kafka folder
+  file: path=/opt/kafka/ owner=root group=root recurse=yes
+
+- name: Set up zookeeper configuration
+  template:
+    src: zookeeper.properties.j2
+    dest: /opt/kafka/config/zookeeper.properties
+
+- name: pause for a few seconds before starting zookeeper
+  pause:
+    seconds: 10
+
+- name: Start zookeeper
+  shell: bin/zookeeper-server-start.sh -daemon config/zookeeper.properties
+  args:
+    chdir: /opt/kafka
+
+- name: pause for a few seconds after starting zookeeper
+  pause:
+    seconds: 10
+
+- name: Set up kafka configuration
+  template:
+    src: server.properties.j2
+    dest: /opt/kafka/config/server.properties
+
+- name: pause for a few seconds before starting broker
+  pause:
+    seconds: 10
+
+- name: Start kafka broker
+  shell: /opt/kafka/bin/kafka-server-start.sh -daemon config/server.properties
+  args:
+    chdir: /opt/kafka
+
+- name: create a topic
+  shell: bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic tweets2 2>/tmp/topic 1>&2
+  args:
+    chdir: /opt/kafka

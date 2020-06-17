@@ -1,0 +1,7 @@
+---
+- name: Update hosts after decommissioning
+  hosts: all
+  become: no
+
+  roles:
+    - updatehosts

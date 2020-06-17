@@ -1,0 +1,50 @@
+cashost1 ansible_ssh_host=10.73.183.227
+cashost2 ansible_ssh_host=10.73.183.233
+cashost3 ansible_ssh_host=10.73.183.207
+kafka1 ansible_ssh_host=10.187.134.82
+kafka2 ansible_ssh_host=10.73.183.250
+kafka3 ansibls_ssh_host=10.73.183.253
+yumhost ansible_ssh_host=10.73.183.212
+softrepo ansible_ssh_host=10.73.183.212
+piphost ansible_ssh_host=10.73.183.212
+spark1 ansible_ssh_host=10.73.183.229
+spark2 ansible_ssh_host=10.73.183.242
+spark3 ansible_ssh_host=10.73.183.203
+kprod1 ansible_ssh_host=10.73.183.213
+
+[MandatoryHosts]
+yumhost
+softrepo
+piphost
+
+[CassandraMasters]
+cashost1
+cashost2
+cashost3
+
+[CassandraSlaves]
+
+[CassandraDecommission]
+
+[ZookeeperKafka]
+kafka1
+
+[KafkaBrokers]
+kafka2
+kafka3
+
+[SparkMaster]
+spark1
+
+[SparkSlaves]
+spark2
+spark3
+
+[SparkDecommission]
+
+[KafkaProducers]
+kprod1
+
+[ThriftServers]
+
+[RemovedNodes]

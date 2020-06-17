@@ -1,0 +1,7 @@
+vectorno,label,model,alpha,type,preprocessor,tokenizer,max_features,stop_words,lowercase,strip_accents,score_type,score
+81,toxic,bern,{'alpha': 10.0},tfidf,1,0,6000,english,False,,roc_auc,0.8571599859723562
+80,severe_toxic,bern,{'alpha': 2.0},tfidf,1,0,6000,,False,,roc_auc,0.9297171414739759
+80,obscene,bern,{'alpha': 10.0},tfidf,1,0,6000,,False,,roc_auc,0.8780263668288949
+80,threat,bern,{'alpha': 0.5},tfidf,1,0,6000,,False,,roc_auc,0.8267967102360134
+80,insult,bern,{'alpha': 10.0},tfidf,1,0,6000,,False,,roc_auc,0.8497540080768965
+80,identity_hate,bern,{'alpha': 1.0},tfidf,1,0,6000,,False,,roc_auc,0.8786084958535012

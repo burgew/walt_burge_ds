@@ -1,0 +1,16 @@
+---
+- name: Decommission spark node
+  hosts: SparkDecommission
+  become: no
+
+  tasks:
+  - name: Decommission Spark node
+    shell: sbin/stop-slave.sh
+    args:
+      chdir: /opt/spark
+
+- hosts: all
+  tasks: []
+  roles:
+    - updatehosts
+

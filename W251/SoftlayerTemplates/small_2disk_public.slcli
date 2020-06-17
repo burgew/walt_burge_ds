@@ -1,0 +1,9 @@
+domain=w251.mids
+disk=25,25
+billing=hourly
+hostname=abc123
+memory=4096
+key=FinalProj
+datacenter=dal13
+os=CENTOS_LATEST_64
+cpu=2

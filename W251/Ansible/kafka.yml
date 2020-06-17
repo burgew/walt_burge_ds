@@ -1,0 +1,14 @@
+---
+# Loads all servers into the playbook so their hosts file can be updated later
+- hosts: all
+  tasks: []
+  roles:
+    - updatehosts
+
+- name: Install Kafka nodes
+  hosts: KafkaBrokers
+  become: no
+
+  roles:
+    - common
+    - kafka

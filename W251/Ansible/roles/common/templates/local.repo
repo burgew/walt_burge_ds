@@ -1,0 +1,11 @@
+[localepel]
+Name = gatewaylocal
+baseurl=http://10.73.183.212/epel/
+gpgcheck=0
+enabled=1
+
+[localius]
+name = gatewaylocalius
+baseurl=http://10.73.183.212/ius/
+gpgcheck=0
+enabled=1

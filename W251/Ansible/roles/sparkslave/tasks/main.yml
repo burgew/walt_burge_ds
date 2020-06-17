@@ -1,0 +1,8 @@
+- name: Pause before starting spark slave
+  pause:
+    seconds: 10
+
+- name: start spark
+  shell: sleep 10 ; sbin/start-slave.sh spark://sparkmaster:7077
+  args:
+    chdir: /opt/spark

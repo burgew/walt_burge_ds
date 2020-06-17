@@ -1,0 +1,30 @@
+version: '3.7'
+
+services:
+  master:
+    image: kafka-spark
+    command: ./start-master.sh
+    hostname: master
+    environment:
+      MASTER: spark://master:7077
+      SPARK_CONF_DIR: /conf
+      SPARK_PUBLIC_DNS: ${EXTERNAL_IP}
+    ports:
+      - 4040:4040
+      - 6066:6066
+      - 7077:7077
+      - 8080:8080
+
+  worker:
+    image: kafka-spark
+    command: ./start-slave.sh
+    hostname: worker
+    environment:
+      SPARK_CONF_DIR: /conf
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 1g
+      SPARK_PUBLIC_DNS: ${EXTERNAL_IP}
+    depends_on:
+      - master
+    ports:
+      - 8081:8081
