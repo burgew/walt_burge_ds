@@ -31,7 +31,7 @@ The PGSS Giving Study was conducted in cooperation with the [Pensylvania Governo
 ## Scalable Streaming Text Analysis
 
 
-[Twitter Sentiment Analysis (slides,](UCBerkeley_Projects/W251/w251_YATSA_slides.pdf) [whitepaper)](W251/w251_YATSA_whitepaper.pdf)  
+[Twitter Sentiment Analysis (slides,](UCBerkeley_Projects/W251/w251_YATSA_slides.pdf) [whitepaper)](UCBerkeley_Projects/W251/w251_YATSA_whitepaper.pdf)  
 [(UCB Course Details : Deep Learning in the Cloud and at the Edge)](https://www.ischool.berkeley.edu/courses/datasci/251)
 
 
